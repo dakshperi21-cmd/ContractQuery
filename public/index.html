@@ -3,29 +3,35 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Polymarket Contract Lookup</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>" />
+  <title>polymarket-lookup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230a0a0a%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23ffb300%22 font-family=%22monospace%22>$</text></svg>" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
   <header class="topbar">
-    <div class="brand">
-      <span class="brand-mark">◆</span>
-      <span>Polymarket Contract Lookup</span>
+    <div class="winbar">
+      <span class="dot dot-r"></span>
+      <span class="dot dot-y"></span>
+      <span class="dot dot-g"></span>
+      <span class="winbar-title">polymarket-lookup</span>
     </div>
-    <p class="tagline">Search any Polymarket market and see live prices, volume &amp; liquidity.</p>
+    <div class="brand-row">
+      <h1 class="brand"><span class="prompt">$</span> contract<span class="cursor">_</span></h1>
+      <p class="tagline">// query any Polymarket contract — live odds, volume, liquidity</p>
+    </div>
   </header>
 
   <main>
     <section class="search-panel">
       <form id="search-form" autocomplete="off">
+        <label class="search-label" for="search-input">query&gt;</label>
         <input
           id="search-input"
           type="text"
-          placeholder="Search a contract… e.g. “Fed rate decision”, “Trump”, “Bitcoin $150k”"
+          placeholder="fed rate decision / trump / bitcoin $150k …"
           aria-label="Search Polymarket contracts"
         />
-        <button type="submit">Search</button>
+        <button type="submit">run</button>
       </form>
       <div id="search-status" class="status" aria-live="polite"></div>
     </section>
@@ -36,7 +42,11 @@
   </main>
 
   <footer>
-    Data from Polymarket's public Gamma &amp; CLOB APIs. Not affiliated with Polymarket. Not financial advice.
+    <span>data: polymarket public gamma + clob api</span>
+    <span class="footer-sep">·</span>
+    <span>unaffiliated, unofficial</span>
+    <span class="footer-sep">·</span>
+    <span>not financial advice</span>
   </footer>
 
   <script src="/app.js"></script>
