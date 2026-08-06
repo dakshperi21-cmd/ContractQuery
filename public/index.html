@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Polymarket Contract Lookup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔮</text></svg>" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">◆</span>
+      <span>Polymarket Contract Lookup</span>
+    </div>
+    <p class="tagline">Search any Polymarket market and see live prices, volume &amp; liquidity.</p>
+  </header>
+
+  <main>
+    <section class="search-panel">
+      <form id="search-form" autocomplete="off">
+        <input
+          id="search-input"
+          type="text"
+          placeholder="Search a contract… e.g. “Fed rate decision”, “Trump”, “Bitcoin $150k”"
+          aria-label="Search Polymarket contracts"
+        />
+        <button type="submit">Search</button>
+      </form>
+      <div id="search-status" class="status" aria-live="polite"></div>
+    </section>
+
+    <section id="results" class="results" aria-live="polite"></section>
+
+    <section id="detail" class="detail hidden" aria-live="polite"></section>
+  </main>
+
+  <footer>
+    Data from Polymarket's public Gamma &amp; CLOB APIs. Not affiliated with Polymarket. Not financial advice.
+  </footer>
+
+  <script src="/app.js"></script>
+</body>
+</html>
