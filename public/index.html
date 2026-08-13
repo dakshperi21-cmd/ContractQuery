@@ -16,23 +16,30 @@
       <span class="winbar-title">polymarket-lookup</span>
     </div>
     <div class="brand-row">
-      <h1 class="brand"><span class="prompt">$</span> contract<span class="cursor">_</span></h1>
+      <h1 class="brand-heading">
+        <button type="button" id="brand-home" class="brand" title="Back to home">
+          <span class="prompt">$</span> contract<span class="cursor">_</span>
+        </button>
+      </h1>
       <p class="tagline">// query any Polymarket contract — live odds, volume, liquidity</p>
     </div>
   </header>
 
   <main>
     <section class="search-panel">
-      <form id="search-form" autocomplete="off">
-        <label class="search-label" for="search-input">query&gt;</label>
-        <input
-          id="search-input"
-          type="text"
-          placeholder="fed rate decision / trump / bitcoin $150k …"
-          aria-label="Search Polymarket contracts"
-        />
-        <button type="submit">run</button>
-      </form>
+      <div class="search-row">
+        <form id="search-form" autocomplete="off">
+          <label class="search-label" for="search-input">query&gt;</label>
+          <input
+            id="search-input"
+            type="text"
+            placeholder="fed rate decision / trump / bitcoin $150k …"
+            aria-label="Search Polymarket contracts"
+          />
+          <button type="submit">run</button>
+        </form>
+        <button type="button" id="home-btn" class="home-btn" title="Back to home">home</button>
+      </div>
       <div id="search-status" class="status" aria-live="polite"></div>
     </section>
 

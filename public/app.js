@@ -4,6 +4,8 @@
   const statusEl = document.getElementById("search-status");
   const resultsEl = document.getElementById("results");
   const detailEl = document.getElementById("detail");
+  const homeBtn = document.getElementById("home-btn");
+  const brandHome = document.getElementById("brand-home");
 
   let currentRequestId = 0;
 
@@ -11,6 +13,21 @@
     e.preventDefault();
     runSearch(input.value.trim());
   });
+
+  homeBtn.addEventListener("click", goHome);
+  brandHome.addEventListener("click", goHome);
+
+  function goHome() {
+    currentRequestId++; // invalidate any in-flight search so it can't repopulate the page
+    input.value = "";
+    resultsEl.innerHTML = "";
+    resultsEl.classList.remove("hidden");
+    statusEl.textContent = "";
+    statusEl.classList.remove("error");
+    hideDetail();
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    input.focus();
+  }
 
   async function runSearch(query) {
     hideDetail();

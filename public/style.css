@@ -88,11 +88,25 @@ body {
   margin: 0 auto;
 }
 
+.brand-heading {
+  margin: 0;
+}
+
 .brand {
   margin: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  font-family: var(--mono);
   font-size: 1.6rem;
   font-weight: 700;
   letter-spacing: -.01em;
+  cursor: pointer;
+}
+
+.brand:hover .prompt {
+  text-decoration: underline;
 }
 
 .prompt {
@@ -132,13 +146,40 @@ main {
   z-index: 10;
 }
 
+.search-row {
+  display: flex;
+  align-items: stretch;
+  gap: .6rem;
+}
+
 #search-form {
+  flex: 1;
   display: flex;
   align-items: stretch;
   gap: 0;
+  min-width: 0;
   border: 1px solid var(--line);
   background: var(--bg-raised);
 }
+
+.home-btn {
+  flex-shrink: 0;
+  padding: 0 1rem;
+  border: 1px solid var(--line);
+  background: var(--bg-raised);
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: .85rem;
+  cursor: pointer;
+}
+
+.home-btn:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.home-btn::before { content: "["; margin-right: .15em; }
+.home-btn::after { content: "]"; margin-left: .15em; }
 
 .search-label {
   display: flex;
