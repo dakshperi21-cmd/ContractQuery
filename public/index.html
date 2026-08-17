@@ -15,7 +15,13 @@
         <a href="/glossary.html">Glossary</a>
       </nav>
       <div class="masthead-actions">
-        <button type="button" id="eli5-toggle" class="eli5-toggle" title="Explain jargon in plain language as you browse" aria-pressed="false">ELI5: Off</button>
+        <div class="eli5-group">
+          <button type="button" id="eli5-toggle" class="eli5-toggle" title="Explain jargon in plain language as you browse" aria-pressed="false">ELI5: Off</button>
+          <button type="button" id="eli5-info" class="info-btn" aria-label="What is ELI5 mode?" aria-expanded="false">?</button>
+          <div id="eli5-info-popover" class="info-popover hidden" role="tooltip">
+            <strong>ELI5</strong> = "Explain Like I'm 5." Turn it on and jargon terms (Liquidity, Spread, etc.) get a plain-language explanation on hover, plus a note connecting the market to a basic economics concept.
+          </div>
+        </div>
         <span id="auth-area" class="auth-area"></span>
       </div>
     </div>

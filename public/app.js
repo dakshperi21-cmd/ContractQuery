@@ -25,6 +25,8 @@
   const browseSection = document.getElementById("browse");
   const browseBody = document.getElementById("browse-body");
   const eli5Toggle = document.getElementById("eli5-toggle");
+  const eli5Info = document.getElementById("eli5-info");
+  const eli5InfoPopover = document.getElementById("eli5-info-popover");
 
   let currentRequestId = 0;
   let currentUser = null;
@@ -57,6 +59,27 @@
     eli5Toggle.setAttribute("aria-pressed", String(eli5Mode));
     eli5Toggle.textContent = eli5Mode ? "ELI5: On" : "ELI5: Off";
   }
+
+  eli5Info.addEventListener("click", (e) => {
+    e.stopPropagation();
+    const isOpen = !eli5InfoPopover.classList.contains("hidden");
+    eli5InfoPopover.classList.toggle("hidden", isOpen);
+    eli5Info.setAttribute("aria-expanded", String(!isOpen));
+  });
+
+  document.addEventListener("click", (e) => {
+    if (eli5InfoPopover.classList.contains("hidden")) return;
+    if (e.target === eli5Info || eli5InfoPopover.contains(e.target)) return;
+    eli5InfoPopover.classList.add("hidden");
+    eli5Info.setAttribute("aria-expanded", "false");
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !eli5InfoPopover.classList.contains("hidden")) {
+      eli5InfoPopover.classList.add("hidden");
+      eli5Info.setAttribute("aria-expanded", "false");
+    }
+  });
 
   // ---------------- auth ----------------
 
