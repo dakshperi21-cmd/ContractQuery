@@ -90,7 +90,7 @@
       .join("");
 
     if (d.recent_signups.length === 0) {
-      signupsEl.innerHTML = `<div class="empty">no signups yet</div>`;
+      signupsEl.innerHTML = `<div class="empty">No signups yet.</div>`;
     } else {
       signupsEl.innerHTML = d.recent_signups
         .map(

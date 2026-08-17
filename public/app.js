@@ -55,7 +55,7 @@
   function updateEli5Toggle() {
     eli5Toggle.classList.toggle("on", eli5Mode);
     eli5Toggle.setAttribute("aria-pressed", String(eli5Mode));
-    eli5Toggle.textContent = eli5Mode ? "[ eli5: on ]" : "[ eli5: off ]";
+    eli5Toggle.textContent = eli5Mode ? "ELI5: On" : "ELI5: Off";
   }
 
   // ---------------- auth ----------------
@@ -77,16 +77,16 @@
   function renderAuthArea() {
     if (currentUser) {
       authArea.innerHTML = `
-        <button type="button" id="recents-toggle" class="auth-link">[ recents ]</button>
-        <span class="auth-user">hi <strong>${escapeHtml(currentUser.username)}</strong></span>
-        <button type="button" id="logout-btn" class="auth-link">[ logout ]</button>
+        <button type="button" id="recents-toggle" class="auth-link">Recents</button>
+        <span class="auth-user">Hi, <strong>${escapeHtml(currentUser.username)}</strong></span>
+        <button type="button" id="logout-btn" class="auth-link">Log out</button>
       `;
       document.getElementById("recents-toggle").addEventListener("click", toggleRecents);
       document.getElementById("logout-btn").addEventListener("click", doLogout);
     } else {
       authArea.innerHTML = `
-        <button type="button" id="login-btn" class="auth-link">[ login ]</button>
-        <button type="button" id="signup-btn" class="auth-link">[ sign up ]</button>
+        <button type="button" id="login-btn" class="auth-link">Log in</button>
+        <button type="button" id="signup-btn" class="auth-link btn-primary-link">Sign up</button>
       `;
       document.getElementById("login-btn").addEventListener("click", () => openAuthModal("login"));
       document.getElementById("signup-btn").addEventListener("click", () => openAuthModal("signup"));
@@ -111,7 +111,7 @@
     tabLogin.classList.toggle("active", mode === "login");
     tabSignup.classList.toggle("active", mode === "signup");
     authPassword.autocomplete = mode === "login" ? "current-password" : "new-password";
-    authSubmit.textContent = mode === "login" ? "log in" : "create account";
+    authSubmit.textContent = mode === "login" ? "Log in" : "Create account";
     authError.textContent = "";
   }
 
@@ -133,8 +133,8 @@
     const password = authPassword.value;
     authError.textContent = "";
     authSubmit.disabled = true;
-    const busyLabel = authMode === "login" ? "logging in…" : "creating…";
-    const idleLabel = authMode === "login" ? "log in" : "create account";
+    const busyLabel = authMode === "login" ? "Logging in…" : "Creating…";
+    const idleLabel = authMode === "login" ? "Log in" : "Create account";
     authSubmit.textContent = busyLabel;
 
     try {
@@ -205,9 +205,9 @@
     for (const item of items) {
       const row = document.createElement("div");
       row.className = "recents-item";
-      const kindLabel = item.kind === "market" ? "market" : "search";
+      const kindLabel = item.kind === "market" ? "Market" : "Search";
       row.innerHTML = `
-        <span class="recents-kind">[${kindLabel}]</span>
+        <span class="recents-kind">${kindLabel}</span>
         <span class="recents-text">${escapeHtml(item.query_text)}</span>
         <span class="recents-time">${relativeTime(item.updated_at || item.created_at)}</span>
         <button type="button" class="recents-remove" title="Remove">&times;</button>
@@ -533,7 +533,7 @@
     const concept = window.CONCEPTS[conceptKey];
     return `
       <div class="eli5-callout">
-        <div class="eli5-callout-label">class concept: ${escapeHtml(concept.label)}</div>
+        <div class="eli5-callout-label">Concept — ${escapeHtml(concept.label)}</div>
         <div class="eli5-callout-body">${specific} <a href="/glossary.html#concept-${conceptKey}" target="_blank" rel="noopener noreferrer">learn more →</a></div>
       </div>`;
   }
@@ -558,7 +558,7 @@
 
     return `
       <div class="starter-questions">
-        <div class="starter-questions-label">// things to think about — discuss with a friend, a teacher, or just yourself</div>
+        <div class="starter-questions-label">Things to think about</div>
         ${questions.map(q => `<div class="starter-question-chip">${escapeHtml(q)}</div>`).join("")}
       </div>`;
   }
@@ -654,7 +654,7 @@
     const outcomes = m.outcomes || [];
     const tokenIds = m.clobTokenIds || [];
     if (outcomes.length === 0 || tokenIds.length === 0) {
-      container.innerHTML = `<div class="price-chart-title">price history</div><div class="price-chart-empty">no chart data available for this contract.</div>`;
+      container.innerHTML = `<div class="price-chart-title">Price history</div><div class="price-chart-empty">no chart data available for this contract.</div>`;
       return;
     }
 
@@ -664,7 +664,7 @@
     });
     const tokenId = tokenIds[bestIdx];
     const outcomeName = outcomes[bestIdx] ? outcomes[bestIdx].name : "Yes";
-    const titleHtml = `<div class="price-chart-title">price history — ${escapeHtml(outcomeName)}</div>`;
+    const titleHtml = `<div class="price-chart-title">Price history — ${escapeHtml(outcomeName)}</div>`;
 
     if (!tokenId) {
       container.innerHTML = `${titleHtml}<div class="price-chart-empty">no chart data available for this contract.</div>`;
@@ -719,6 +719,7 @@
     const xs = points.map(p => xAt(p.t));
     const ys = points.map(p => yAt(p.p));
     const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${xs[i].toFixed(1)},${ys[i].toFixed(1)}`).join(" ");
+    const areaD = `${pathD} L${xs[xs.length - 1].toFixed(1)},${(H - PAD_B).toFixed(1)} L${xs[0].toFixed(1)},${(H - PAD_B).toFixed(1)} Z`;
 
     const gridVals = [pMin, (pMin + pMax) / 2, pMax];
     const gridLines = gridVals.map((val) => {
@@ -729,10 +730,18 @@
 
     const firstDate = new Date(tMin * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
     const lastDate = new Date(tMax * 1000).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+    const gradId = "priceChartGradient" + Math.random().toString(36).slice(2, 8);
 
     host.innerHTML = `
       <svg class="price-chart-svg" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="${gradId}" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" style="stop-color:var(--brass); stop-opacity:0.22" />
+            <stop offset="100%" style="stop-color:var(--brass); stop-opacity:0" />
+          </linearGradient>
+        </defs>
         ${gridLines}
+        <path class="price-chart-area" style="fill:url(#${gradId})" d="${areaD}" />
         <path class="price-chart-line" d="${pathD}" />
         <text class="price-chart-axis-label" x="${PAD_L}" y="${H - 4}" text-anchor="start">${firstDate}</text>
         <text class="price-chart-axis-label" x="${W - PAD_R}" y="${H - 4}" text-anchor="end">${lastDate}</text>

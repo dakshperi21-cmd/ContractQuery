@@ -3,60 +3,55 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>polymarket-lookup</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230a0a0a%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23ffb300%22 font-family=%22monospace%22>$</text></svg>" />
+  <title>Contract — Polymarket lookup</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%2316130f%22/><text x=%2250%22 y=%2270%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%23d9a55c%22 font-family=%22Georgia,serif%22>C</text></svg>" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="winbar">
-      <span class="dot dot-r"></span>
-      <span class="dot dot-y"></span>
-      <span class="dot dot-g"></span>
-      <span class="winbar-title">polymarket-lookup</span>
-      <button type="button" id="eli5-toggle" class="eli5-toggle" title="Explain jargon in plain language as you browse" aria-pressed="false">[ eli5: off ]</button>
-      <span class="winbar-auth" id="auth-area"></span>
-    </div>
-    <div class="brand-row">
-      <h1 class="brand-heading">
-        <button type="button" id="brand-home" class="brand" title="Back to home">
-          <span class="prompt">$</span> contract<span class="cursor">_</span>
-        </button>
-      </h1>
-      <p class="tagline">// query any Polymarket contract — live odds, volume, liquidity</p>
+  <header class="masthead-wrap">
+    <div class="masthead">
+      <button type="button" id="brand-home" class="wordmark" title="Back to home">Contract<span>.</span></button>
+      <nav class="masthead-nav">
+        <a href="/glossary.html">Glossary</a>
+      </nav>
+      <div class="masthead-actions">
+        <button type="button" id="eli5-toggle" class="eli5-toggle" title="Explain jargon in plain language as you browse" aria-pressed="false">ELI5: Off</button>
+        <span id="auth-area" class="auth-area"></span>
+      </div>
     </div>
   </header>
 
   <main>
-    <section class="search-panel">
+    <section class="hero">
+      <h1>Find out what the market thinks.</h1>
+      <p class="hero-sub">Search any Polymarket contract for its live odds, volume, and liquidity.</p>
       <div class="search-row">
-        <form id="search-form" autocomplete="off">
-          <label class="search-label" for="search-input">query&gt;</label>
+        <form id="search-form" class="search-bar" autocomplete="off">
           <input
             id="search-input"
             type="text"
-            placeholder="fed rate decision / trump / bitcoin $150k …"
+            placeholder="Fed rate decision, Trump, Bitcoin $150k…"
             aria-label="Search Polymarket contracts"
           />
-          <button type="submit">run</button>
+          <button type="submit">Search</button>
         </form>
-        <button type="button" id="home-btn" class="home-btn" title="Back to home">home</button>
+        <button type="button" id="home-btn" class="btn-ghost" title="Back to home">Home</button>
       </div>
       <div id="search-status" class="status" aria-live="polite"></div>
     </section>
 
     <section id="recents-panel" class="recents-panel hidden" aria-live="polite">
       <div class="recents-header">
-        <span>recents</span>
-        <button type="button" id="recents-close" class="recents-close" title="Close">[x]</button>
+        <span>Recents</span>
+        <button type="button" id="recents-close" class="recents-close" title="Close">Close</button>
       </div>
       <div id="recents-list" class="recents-list"></div>
     </section>
 
-    <section id="browse" class="browse" aria-live="polite">
+    <section id="browse" class="section" aria-live="polite">
       <div class="browse-intro">
-        <span class="browse-intro-title">// don't know where to start?</span>
-        <span class="browse-intro-sub">here's what people are actually betting on right now — click anything.</span>
+        <div class="eyebrow">Don't know where to start?</div>
+        <p class="section-note">Here's what people are actually betting on right now — click anything.</p>
       </div>
       <div id="browse-body"><div class="empty"><span class="spinner"></span>loading markets…</div></div>
     </section>
@@ -67,29 +62,29 @@
   </main>
 
   <footer>
-    <a class="footer-link" href="/glossary.html">glossary</a>
+    <a class="footer-link" href="/glossary.html">Glossary</a>
     <span class="footer-sep">·</span>
-    <span>data: polymarket public gamma + clob api</span>
+    <span>Data: Polymarket public Gamma + CLOB API</span>
     <span class="footer-sep">·</span>
-    <span>unaffiliated, unofficial</span>
+    <span>Unaffiliated, unofficial</span>
     <span class="footer-sep">·</span>
-    <span>not financial advice</span>
+    <span>Not financial advice</span>
   </footer>
 
   <div id="auth-modal" class="modal-overlay hidden">
     <div class="modal">
-      <button type="button" id="auth-modal-close" class="modal-close" title="Close">[x]</button>
+      <button type="button" id="auth-modal-close" class="modal-close" title="Close">Close</button>
       <div class="modal-tabs">
-        <button type="button" id="tab-login" class="modal-tab active">login</button>
-        <button type="button" id="tab-signup" class="modal-tab">sign up</button>
+        <button type="button" id="tab-login" class="modal-tab active">Log in</button>
+        <button type="button" id="tab-signup" class="modal-tab">Sign up</button>
       </div>
       <form id="auth-form" autocomplete="off">
-        <label class="modal-label" for="auth-username">username&gt;</label>
+        <label class="modal-label" for="auth-username">Username</label>
         <input id="auth-username" type="text" autocomplete="username" required />
-        <label class="modal-label" for="auth-password">password&gt;</label>
+        <label class="modal-label" for="auth-password">Password</label>
         <input id="auth-password" type="password" autocomplete="current-password" required />
         <div id="auth-error" class="modal-error"></div>
-        <button type="submit" id="auth-submit" class="modal-submit">log in</button>
+        <button type="submit" id="auth-submit" class="modal-submit">Log in</button>
       </form>
     </div>
   </div>

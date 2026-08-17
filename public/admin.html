@@ -3,33 +3,31 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>admin — polymarket-lookup</title>
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 fill=%22%230a0a0a%22/><text x=%2250%22 y=%2270%22 font-size=%2260%22 text-anchor=%22middle%22 fill=%22%23ffb300%22 font-family=%22monospace%22>$</text></svg>" />
+  <title>Admin — Contract</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><rect width=%22100%22 height=%22100%22 rx=%2218%22 fill=%22%2316130f%22/><text x=%2250%22 y=%2270%22 font-size=%2258%22 text-anchor=%22middle%22 fill=%22%23d9a55c%22 font-family=%22Georgia,serif%22>C</text></svg>" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="winbar">
-      <span class="dot dot-r"></span>
-      <span class="dot dot-y"></span>
-      <span class="dot dot-g"></span>
-      <span class="winbar-title">polymarket-lookup / admin</span>
-      <span class="winbar-auth"><a class="auth-link" href="/">[ back to site ]</a></span>
-    </div>
-    <div class="brand-row">
-      <h1 class="brand-heading">
-        <span class="brand"><span class="prompt">$</span> admin<span class="cursor">_</span></span>
-      </h1>
-      <p class="tagline">// site stats — users, queries, activity</p>
+  <header class="masthead-wrap">
+    <div class="masthead">
+      <a href="/" class="wordmark">Contract<span>.</span></a>
+      <nav class="masthead-nav"><span>Admin</span></nav>
+      <div class="masthead-actions">
+        <a class="btn-ghost" href="/">Back to site</a>
+      </div>
     </div>
   </header>
 
   <main>
-    <section id="admin-login" class="search-panel">
-      <form id="admin-login-form" autocomplete="off">
-        <label class="search-label" for="admin-password">password&gt;</label>
-        <input id="admin-password" type="password" autocomplete="current-password" />
-        <button type="submit">unlock</button>
+    <section class="hero hero-compact">
+      <h1>Site activity</h1>
+      <p class="hero-sub">Users, queries, and recent signups.</p>
+    </section>
+
+    <section id="admin-login" class="section">
+      <form id="admin-login-form" class="search-bar" autocomplete="off">
+        <input id="admin-password" type="password" placeholder="Admin password" autocomplete="current-password" />
+        <button type="submit">Unlock</button>
       </form>
       <div id="admin-login-error" class="status error"></div>
     </section>
@@ -38,24 +36,24 @@
       <div class="volume-summary" id="admin-tiles"></div>
       <div class="stat-grid" id="admin-tiles-2"></div>
 
-      <div class="detail" style="margin-top:1.1rem;">
-        <div class="detail-title" style="margin-bottom:1rem;">last 7 days</div>
-        <div style="display:flex; gap:1.2rem; font-size:.78rem; color:var(--fg-dim); margin-bottom:.5rem;">
-          <span><span style="display:inline-block;width:9px;height:9px;background:var(--amber);margin-right:.35rem;"></span>signups</span>
-          <span><span style="display:inline-block;width:9px;height:9px;background:var(--up);margin-right:.35rem;"></span>queries</span>
+      <div class="detail-card section">
+        <div class="detail-title" style="margin-bottom:1rem;">Last 7 days</div>
+        <div class="chart-legend">
+          <span><span class="legend-swatch legend-swatch-signups"></span>Signups</span>
+          <span><span class="legend-swatch legend-swatch-queries"></span>Queries</span>
         </div>
         <div id="admin-chart" class="admin-chart"></div>
       </div>
 
-      <div class="detail" style="margin-top:1.1rem;">
-        <div class="detail-title" style="margin-bottom:.75rem;">recent signups</div>
+      <div class="detail-card section">
+        <div class="detail-title" style="margin-bottom:.75rem;">Recent signups</div>
         <div id="admin-signups"></div>
       </div>
     </section>
   </main>
 
   <footer>
-    <span>internal — not linked from the public site</span>
+    <span>Internal — not linked from the public site</span>
   </footer>
 
   <script src="/admin.js"></script>
