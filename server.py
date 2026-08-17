@@ -43,7 +43,19 @@ PUBLIC_DIR = Path(__file__).parent / "public"
 DEFAULT_PORT = 8000
 USER_AGENT = "Mozilla/5.0 (compatible; PolymarketLookup/1.0)"
 
-SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+def _normalize_supabase_url(raw: str) -> str:
+    """Accept the base project URL even if someone pastes it with a path
+    already attached (e.g. from a "Connect" dialog showing .../rest/v1) —
+    we always append /rest/v1/{table} ourselves, so strip common suffixes."""
+    url = (raw or "").strip().rstrip("/")
+    for suffix in ("/rest/v1", "/rest", "/auth/v1", "/storage/v1"):
+        if url.lower().endswith(suffix):
+            url = url[: -len(suffix)]
+            break
+    return url
+
+
+SUPABASE_URL = _normalize_supabase_url(os.environ.get("SUPABASE_URL"))
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or ""
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or ""
 
