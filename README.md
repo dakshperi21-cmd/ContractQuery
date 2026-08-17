@@ -1,4 +1,4 @@
-# Polymarket Contract Lookup
+# Probable — Polymarket Contract Lookup
 
 A tiny website for looking up Polymarket trading contracts by search query and
 seeing their live prices, volume, liquidity, and other stats — with optional

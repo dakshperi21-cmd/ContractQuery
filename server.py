@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Polymarket Contract Lookup — backend
+Probable — Polymarket contract lookup, backend
 
 A dependency-free (stdlib only) web server that:
   1. Serves the static frontend in ./public
@@ -801,7 +801,7 @@ def main():
     port = int(os.environ.get("PORT") or (sys.argv[1] if len(sys.argv) > 1 else DEFAULT_PORT))
     host = os.environ.get("HOST", "0.0.0.0")
     server = ThreadingHTTPServer((host, port), Handler)
-    print(f"Polymarket Contract Lookup running on {host}:{port}")
+    print(f"Probable — Polymarket contract lookup running on {host}:{port}")
     print(f"Accounts (Supabase): {'configured' if supabase_configured() else 'NOT configured — auth endpoints disabled'}")
     print(f"Admin panel: {'configured' if ADMIN_PASSWORD else 'NOT configured — set ADMIN_PASSWORD to enable /admin.html'}")
     try:
