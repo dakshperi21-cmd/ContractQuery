@@ -12,7 +12,9 @@
     <div class="masthead">
       <button type="button" id="brand-home" class="wordmark" title="Back to home">Contract<span>.</span></button>
       <nav class="masthead-nav">
+        <a href="/features.html">Features</a>
         <a href="/glossary.html">Glossary</a>
+        <a href="/about.html">About</a>
       </nav>
       <div class="masthead-actions">
         <div class="eli5-group">
@@ -68,7 +70,11 @@
   </main>
 
   <footer>
+    <a class="footer-link" href="/features.html">Features</a>
+    <span class="footer-sep">·</span>
     <a class="footer-link" href="/glossary.html">Glossary</a>
+    <span class="footer-sep">·</span>
+    <a class="footer-link" href="/about.html">About</a>
     <span class="footer-sep">·</span>
     <span>Data: Polymarket public Gamma + CLOB API</span>
     <span class="footer-sep">·</span>
@@ -79,10 +85,12 @@
 
   <div id="auth-modal" class="modal-overlay hidden">
     <div class="modal">
-      <button type="button" id="auth-modal-close" class="modal-close" title="Close">Close</button>
-      <div class="modal-tabs">
-        <button type="button" id="tab-login" class="modal-tab active">Log in</button>
-        <button type="button" id="tab-signup" class="modal-tab">Sign up</button>
+      <div class="modal-top">
+        <div class="modal-tabs">
+          <button type="button" id="tab-login" class="modal-tab active">Log in</button>
+          <button type="button" id="tab-signup" class="modal-tab">Sign up</button>
+        </div>
+        <button type="button" id="auth-modal-close" class="modal-close" title="Close" aria-label="Close">&times;</button>
       </div>
       <form id="auth-form" autocomplete="off">
         <label class="modal-label" for="auth-username">Username</label>
