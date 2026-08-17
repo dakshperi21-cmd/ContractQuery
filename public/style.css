@@ -82,8 +82,31 @@ body {
   letter-spacing: .02em;
 }
 
-.winbar-auth {
+.eli5-toggle {
   margin-left: auto;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--fg-dim);
+  font-family: var(--mono);
+  font-size: .74rem;
+  padding: .2rem .5rem;
+  cursor: pointer;
+}
+
+.eli5-toggle:hover {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.eli5-toggle.on {
+  border-color: var(--amber);
+  background: var(--amber);
+  color: #1a1200;
+  font-weight: 700;
+}
+
+.winbar-auth {
+  margin-left: .8rem;
   display: flex;
   align-items: center;
   gap: .6rem;
@@ -320,7 +343,8 @@ main {
   flex-shrink: 0;
   font-size: .7rem;
   color: var(--fg-faint);
-  width: 3.2em;
+  white-space: nowrap;
+  min-width: 4.6em;
 }
 
 .recents-text {
@@ -821,4 +845,318 @@ footer {
   font-size: .68rem;
   color: var(--fg-dim);
   text-transform: uppercase;
+}
+
+/* ---------- footer link ---------- */
+
+.footer-link {
+  color: var(--amber);
+  text-decoration: none;
+}
+
+.footer-link:hover { text-decoration: underline; }
+
+/* ---------- market browser ---------- */
+
+.browse {
+  margin-top: .5rem;
+}
+
+.browse-intro {
+  display: flex;
+  flex-direction: column;
+  gap: .25rem;
+  margin-bottom: 1.1rem;
+}
+
+.browse-intro-title {
+  color: var(--amber);
+  font-size: .88rem;
+  font-weight: 700;
+}
+
+.browse-intro-sub {
+  color: var(--fg-dim);
+  font-size: .82rem;
+}
+
+.browse-category {
+  margin-bottom: 1.5rem;
+}
+
+.browse-category-label {
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--fg-dim);
+  margin-bottom: .5rem;
+  border-bottom: 1px solid var(--line-soft);
+  padding-bottom: .4rem;
+}
+
+.browse-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  border: 1px solid var(--line);
+}
+
+.browse-card {
+  display: flex;
+  flex-direction: column;
+  gap: .5rem;
+  padding: .8rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-raised);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--mono);
+  color: var(--fg);
+}
+
+.browse-card:hover { background: var(--line-soft); }
+
+.browse-card-title {
+  font-size: .85rem;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.browse-card-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+}
+
+/* ---------- glossary page ---------- */
+
+.concepts-intro {
+  margin-bottom: 1.6rem;
+}
+
+.concepts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  border: 1px solid var(--line);
+}
+
+.concept-card {
+  padding: .9rem;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: var(--bg-raised);
+  scroll-margin-top: 5rem;
+}
+
+.concept-card-label {
+  color: var(--amber);
+  font-weight: 700;
+  font-size: .88rem;
+  margin-bottom: .4rem;
+}
+
+.concept-card-blurb {
+  color: var(--fg-dim);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.glossary-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--line);
+}
+
+.glossary-entry {
+  padding: 1rem 1.1rem;
+  border-top: 1px solid var(--line);
+  scroll-margin-top: 5rem;
+}
+
+.glossary-entry:first-child { border-top: none; }
+
+.glossary-term {
+  font-weight: 700;
+  font-size: .98rem;
+  margin-bottom: .4rem;
+}
+
+.glossary-def {
+  color: var(--fg);
+  font-size: .85rem;
+  line-height: 1.55;
+  margin-bottom: .5rem;
+}
+
+.glossary-analogy {
+  color: var(--fg-dim);
+  font-size: .82rem;
+  line-height: 1.55;
+  margin-bottom: .6rem;
+}
+
+.glossary-analogy-label {
+  color: var(--fg-faint);
+  text-transform: uppercase;
+  font-size: .68rem;
+  letter-spacing: .04em;
+  margin-right: .3rem;
+}
+
+.glossary-tag {
+  display: inline-block;
+  font-size: .72rem;
+  color: var(--amber);
+  border: 1px solid var(--amber);
+  padding: .15rem .45rem;
+  text-decoration: none;
+}
+
+.glossary-tag:hover { background: var(--amber); color: #1a1200; }
+
+/* ---------- ELI5 inline mode ---------- */
+
+.eli5-term {
+  border-bottom: 1px dotted var(--amber);
+  cursor: help;
+  position: relative;
+}
+
+.eli5-callout {
+  margin-top: 1.1rem;
+  border: 1px solid var(--amber);
+  background: var(--bg-raised);
+  padding: .9rem 1rem;
+}
+
+.eli5-callout-label {
+  color: var(--amber);
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  font-weight: 700;
+  margin-bottom: .4rem;
+}
+
+.eli5-callout-body {
+  color: var(--fg);
+  font-size: .84rem;
+  line-height: 1.55;
+}
+
+.eli5-callout-body a {
+  color: var(--amber);
+}
+
+/* ---------- starter questions ---------- */
+
+.starter-questions {
+  margin-top: 1.2rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.starter-questions-label {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--fg-dim);
+  margin-bottom: .6rem;
+}
+
+.starter-question-chip {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-raised);
+  border: 1px solid var(--line);
+  color: var(--fg);
+  font-family: var(--mono);
+  font-size: .82rem;
+  padding: .55rem .7rem;
+  margin-bottom: .5rem;
+  cursor: default;
+}
+
+.starter-question-chip::before {
+  content: "? ";
+  color: var(--amber);
+}
+
+/* ---------- price history chart ---------- */
+
+.price-chart-wrap {
+  margin-top: 1.2rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.price-chart-title {
+  font-size: .72rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--fg-dim);
+  margin-bottom: .6rem;
+}
+
+.price-chart-svg {
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+
+.price-chart-line {
+  fill: none;
+  stroke: var(--amber);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.price-chart-grid {
+  stroke: var(--line-soft);
+  stroke-width: 1;
+}
+
+.price-chart-axis-label {
+  fill: var(--fg-faint);
+  font-size: 10px;
+  font-family: var(--mono);
+}
+
+.price-chart-crosshair {
+  stroke: var(--fg-faint);
+  stroke-width: 1;
+  stroke-dasharray: 2 2;
+  display: none;
+}
+
+.price-chart-dot {
+  fill: var(--amber);
+  display: none;
+}
+
+.price-chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  background: var(--bg-raised);
+  border: 1px solid var(--amber);
+  padding: .3rem .5rem;
+  font-size: .74rem;
+  font-family: var(--mono);
+  color: var(--fg);
+  white-space: nowrap;
+  display: none;
+  transform: translate(-50%, -110%);
+  z-index: 5;
+}
+
+.price-chart-empty {
+  color: var(--fg-faint);
+  font-size: .8rem;
 }

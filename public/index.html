@@ -14,6 +14,7 @@
       <span class="dot dot-y"></span>
       <span class="dot dot-g"></span>
       <span class="winbar-title">polymarket-lookup</span>
+      <button type="button" id="eli5-toggle" class="eli5-toggle" title="Explain jargon in plain language as you browse" aria-pressed="false">[ eli5: off ]</button>
       <span class="winbar-auth" id="auth-area"></span>
     </div>
     <div class="brand-row">
@@ -52,12 +53,22 @@
       <div id="recents-list" class="recents-list"></div>
     </section>
 
-    <section id="results" class="results" aria-live="polite"></section>
+    <section id="browse" class="browse" aria-live="polite">
+      <div class="browse-intro">
+        <span class="browse-intro-title">// don't know where to start?</span>
+        <span class="browse-intro-sub">here's what people are actually betting on right now — click anything.</span>
+      </div>
+      <div id="browse-body"><div class="empty"><span class="spinner"></span>loading markets…</div></div>
+    </section>
+
+    <section id="results" class="results hidden" aria-live="polite"></section>
 
     <section id="detail" class="detail hidden" aria-live="polite"></section>
   </main>
 
   <footer>
+    <a class="footer-link" href="/glossary.html">glossary</a>
+    <span class="footer-sep">·</span>
     <span>data: polymarket public gamma + clob api</span>
     <span class="footer-sep">·</span>
     <span>unaffiliated, unofficial</span>
@@ -83,6 +94,7 @@
     </div>
   </div>
 
+  <script src="/glossary-data.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>

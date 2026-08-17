@@ -213,6 +213,78 @@ def do_orderbook(token_id: str):
         return {"error": f"no orderbook ({e.code})"}
 
 
+def do_price_history(token_id: str, interval: str = "max", fidelity: int = 180):
+    url = f"{CLOB_BASE}/prices-history?" + urllib.parse.urlencode({
+        "market": token_id, "interval": interval, "fidelity": fidelity,
+    })
+    try:
+        data = http_get_json(url)
+    except urllib.error.HTTPError as e:
+        return {"error": f"no price history ({e.code})", "points": []}
+    points = [{"t": p.get("t"), "p": p.get("p")} for p in data.get("history", [])]
+    return {"points": points}
+
+
+# ---------------------------------------------------------------------------
+# curated market browser — free, keyword-bucketed off the public Gamma API
+# ---------------------------------------------------------------------------
+
+BROWSE_CATEGORIES = [
+    ("politics", "Politics & Elections", [
+        "election", "president", "senate", "governor", "prime minister", "parliament",
+        "congress", "poll", "impeach", "cabinet", "vote", "primary", "referendum",
+    ]),
+    ("economy", "Fed & Economy", [
+        "fed ", "federal reserve", "interest rate", "inflation", "cpi", "gdp",
+        "recession", "rate decision", "rate cut", "rate hike", "treasury", "jobs report",
+        "unemployment", "powell",
+    ]),
+    ("tech", "Tech, AI & Crypto", [
+        "bitcoin", "ethereum", "crypto", " ai ", "openai", "chatgpt", "anthropic",
+        "apple", "tesla", "spacex", "nvidia", "google", "meta ", "elon musk",
+        "artificial intelligence", "grok", "gemini",
+    ]),
+    ("sports", "Sports", [
+        "nba", "nfl", "mlb", "nhl", "soccer", "football", "tennis", "ufc", "boxing",
+        "olympics", "world cup", "premier league", "super bowl", "champions league",
+        "f1", "formula 1", "golf",
+    ]),
+]
+
+
+def do_browse(per_category: int = 6) -> list:
+    url = f"{GAMMA_BASE}/markets?" + urllib.parse.urlencode({
+        "active": "true", "closed": "false", "order": "volume24hr",
+        "ascending": "false", "limit": 200,
+    })
+    raw_markets = http_get_json(url)
+
+    buckets = {key: [] for key, _, _ in BROWSE_CATEGORIES}
+    seen_event_ids = {key: set() for key in buckets}
+
+    for market in raw_markets:
+        events = market.get("events") or []
+        event = events[0] if events else {}
+        haystack = f" {market.get('question', '')} {event.get('title', '')} ".lower()
+        for key, _, keywords in BROWSE_CATEGORIES:
+            if len(buckets[key]) >= per_category:
+                continue
+            if any(kw in haystack for kw in keywords):
+                # avoid piling up many sub-markets from the same event (e.g. every
+                # esports game in a series) — one entry per event per category
+                eid = event.get("id") or market.get("id")
+                if eid in seen_event_ids[key]:
+                    continue
+                seen_event_ids[key].add(eid)
+                buckets[key].append(simplify_market(market, event))
+
+    return [
+        {"key": key, "label": label, "markets": buckets[key]}
+        for key, label, _ in BROWSE_CATEGORIES
+        if buckets[key]
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Supabase (Postgres via PostgREST) client — plain HTTPS, no driver needed
 # ---------------------------------------------------------------------------
@@ -517,6 +589,19 @@ class Handler(BaseHTTPRequestHandler):
                     self._send_error_json(400, "missing token_id")
                     return
                 self._send_json(do_orderbook(token_id))
+                return
+
+            if parsed.path == "/api/price-history":
+                token_id = (qs.get("token_id") or [""])[0].strip()
+                interval = (qs.get("interval") or ["max"])[0].strip()
+                if not token_id:
+                    self._send_error_json(400, "missing token_id")
+                    return
+                self._send_json(do_price_history(token_id, interval=interval))
+                return
+
+            if parsed.path == "/api/browse":
+                self._send_json({"categories": do_browse()})
                 return
 
             if parsed.path == "/api/auth/me":
