@@ -19,7 +19,11 @@ create table if not exists sessions (
 
 create table if not exists queries (
   id bigint generated always as identity primary key,
-  user_id bigint not null references users(id) on delete cascade,
+  -- Nullable on purpose: anonymous (not-logged-in) searches and contract
+  -- views get logged here too, with user_id left null, so admin stats
+  -- ("total queries") reflect all site usage, not just signed-in users.
+  -- Only rows with a user_id ever show up in that user's Recents panel.
+  user_id bigint references users(id) on delete cascade,
   kind text not null check (kind in ('search', 'market')),
   query_text text not null,
   market_id text,

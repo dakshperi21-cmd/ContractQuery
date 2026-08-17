@@ -266,7 +266,8 @@
   }
 
   function logQuery(payload) {
-    if (!currentUser) return;
+    // Logs for every visitor, signed in or not — powers the admin "total
+    // queries" stat. Only logged-in hits ever show up in a Recents panel.
     fetch("/api/queries", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

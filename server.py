@@ -681,7 +681,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             if parsed.path == "/api/queries":
-                user = self._require_user()
+                # Logged in or not: every search / contract view gets logged so
+                # admin stats reflect *all* site usage, not just signed-in users.
+                # Only logged-in rows (user_id set) ever show up in anyone's
+                # Recents panel — GET /api/queries always filters by user_id.
+                user = self._current_user()
                 body = self._read_json_body()
                 kind = body.get("kind")
                 query_text = (body.get("query_text") or "").strip()
@@ -690,19 +694,26 @@ class Handler(BaseHTTPRequestHandler):
                 if kind not in ("search", "market") or not query_text:
                     raise ApiError(400, "kind must be 'search' or 'market', query_text required")
 
-                recent = sb_select("queries", user_id=f"eq.{user['id']}", order="updated_at.desc", limit=1)
-                if (
-                    recent
-                    and recent[0]["kind"] == kind
-                    and recent[0]["query_text"] == query_text
-                    and recent[0].get("market_id") == market_id
-                ):
-                    updated = sb_update("queries", {"id": f"eq.{recent[0]['id']}"}, {"updated_at": now_iso()})
-                    self._send_json({"query": updated[0] if updated else recent[0]})
-                    return
+                user_id = user["id"] if user else None
+
+                if user_id is not None:
+                    # Dedup only makes sense against a known identity — an
+                    # anonymous visitor's "most recent row" could belong to a
+                    # completely different person, so anonymous hits always
+                    # insert a fresh row instead.
+                    recent = sb_select("queries", user_id=f"eq.{user_id}", order="updated_at.desc", limit=1)
+                    if (
+                        recent
+                        and recent[0]["kind"] == kind
+                        and recent[0]["query_text"] == query_text
+                        and recent[0].get("market_id") == market_id
+                    ):
+                        updated = sb_update("queries", {"id": f"eq.{recent[0]['id']}"}, {"updated_at": now_iso()})
+                        self._send_json({"query": updated[0] if updated else recent[0]})
+                        return
 
                 row = sb_insert("queries", {
-                    "user_id": user["id"],
+                    "user_id": user_id,
                     "kind": kind,
                     "query_text": query_text,
                     "market_id": market_id,
