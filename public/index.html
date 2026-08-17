@@ -14,6 +14,7 @@
       <span class="dot dot-y"></span>
       <span class="dot dot-g"></span>
       <span class="winbar-title">polymarket-lookup</span>
+      <span class="winbar-auth" id="auth-area"></span>
     </div>
     <div class="brand-row">
       <h1 class="brand-heading">
@@ -43,6 +44,14 @@
       <div id="search-status" class="status" aria-live="polite"></div>
     </section>
 
+    <section id="recents-panel" class="recents-panel hidden" aria-live="polite">
+      <div class="recents-header">
+        <span>recents</span>
+        <button type="button" id="recents-close" class="recents-close" title="Close">[x]</button>
+      </div>
+      <div id="recents-list" class="recents-list"></div>
+    </section>
+
     <section id="results" class="results" aria-live="polite"></section>
 
     <section id="detail" class="detail hidden" aria-live="polite"></section>
@@ -55,6 +64,24 @@
     <span class="footer-sep">·</span>
     <span>not financial advice</span>
   </footer>
+
+  <div id="auth-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <button type="button" id="auth-modal-close" class="modal-close" title="Close">[x]</button>
+      <div class="modal-tabs">
+        <button type="button" id="tab-login" class="modal-tab active">login</button>
+        <button type="button" id="tab-signup" class="modal-tab">sign up</button>
+      </div>
+      <form id="auth-form" autocomplete="off">
+        <label class="modal-label" for="auth-username">username&gt;</label>
+        <input id="auth-username" type="text" autocomplete="username" required />
+        <label class="modal-label" for="auth-password">password&gt;</label>
+        <input id="auth-password" type="password" autocomplete="current-password" required />
+        <div id="auth-error" class="modal-error"></div>
+        <button type="submit" id="auth-submit" class="modal-submit">log in</button>
+      </form>
+    </div>
+  </div>
 
   <script src="/app.js"></script>
 </body>

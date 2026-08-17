@@ -2,26 +2,38 @@
 """
 Polymarket Contract Lookup — backend
 
-A tiny, dependency-free (stdlib only) web server that:
+A dependency-free (stdlib only) web server that:
   1. Serves the static frontend in ./public
   2. Proxies a few read-only Polymarket public API endpoints under /api/*
      (the browser can't call gamma-api.polymarket.com / clob.polymarket.com
      directly because those hosts don't send CORS headers, so this server
      fetches on the frontend's behalf).
+  3. Provides username/password accounts + a "recents" query history,
+     backed by a Supabase (Postgres) project via its REST API (PostgREST) —
+     called over plain HTTPS with urllib, so still no extra pip packages.
+  4. Serves a password-gated /admin.html page + /api/admin/* stats API.
 
-No API key / wallet needed — everything used here is Polymarket's public,
-unauthenticated market-data API.
+No API key / wallet needed for the Polymarket data itself. Accounts require
+a Supabase project — see README.md for setup. Without SUPABASE_URL /
+SUPABASE_SERVICE_KEY set, the site still works fully for anonymous market
+lookups; only auth/recents/admin endpoints are disabled (501).
 
 Run:
     python3 server.py [port]        # default port 8000
 """
 
+import hashlib
+import hmac
+import http.cookies
 import json
 import os
+import secrets
 import sys
+import time
 import urllib.request
 import urllib.parse
 import urllib.error
+from datetime import datetime, timedelta, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
@@ -30,6 +42,18 @@ CLOB_BASE = "https://clob.polymarket.com"
 PUBLIC_DIR = Path(__file__).parent / "public"
 DEFAULT_PORT = 8000
 USER_AGENT = "Mozilla/5.0 (compatible; PolymarketLookup/1.0)"
+
+SUPABASE_URL = (os.environ.get("SUPABASE_URL") or "").rstrip("/")
+SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or ""
+ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD") or ""
+
+SESSION_TTL_DAYS = 30
+ADMIN_SESSION_TTL_SECONDS = 12 * 60 * 60
+PBKDF2_ITERATIONS = 200_000
+
+# ---------------------------------------------------------------------------
+# generic helpers
+# ---------------------------------------------------------------------------
 
 
 def http_get_json(url: str, timeout: float = 10.0):
@@ -50,6 +74,31 @@ def safe_json_loads(value, default):
         return json.loads(value)
     except (TypeError, ValueError):
         return default
+
+
+def now_iso() -> str:
+    return datetime.now(timezone.utc).isoformat()
+
+
+def iso_days_ago(days: int) -> str:
+    return (datetime.now(timezone.utc) - timedelta(days=days)).isoformat()
+
+
+def iso_today_start() -> str:
+    n = datetime.now(timezone.utc)
+    return n.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+
+
+class ApiError(Exception):
+    def __init__(self, status, message):
+        super().__init__(message)
+        self.status = status
+        self.message = message
+
+
+# ---------------------------------------------------------------------------
+# Polymarket (Gamma / CLOB) proxy logic
+# ---------------------------------------------------------------------------
 
 
 def simplify_market(market: dict, event: dict) -> dict:
@@ -124,7 +173,6 @@ def do_search(query: str, limit: int) -> list:
 
 
 def do_market_lookup(market_id: str) -> dict:
-    # id lookup
     try:
         data = http_get_json(f"{GAMMA_BASE}/markets/{urllib.parse.quote(market_id)}")
         if isinstance(data, list):
@@ -133,7 +181,6 @@ def do_market_lookup(market_id: str) -> dict:
         data = None
 
     if not data:
-        # fall back to slug lookup
         url = f"{GAMMA_BASE}/markets?" + urllib.parse.urlencode({"slug": market_id})
         arr = http_get_json(url)
         data = arr[0] if arr else None
@@ -154,27 +201,251 @@ def do_orderbook(token_id: str):
         return {"error": f"no orderbook ({e.code})"}
 
 
+# ---------------------------------------------------------------------------
+# Supabase (Postgres via PostgREST) client — plain HTTPS, no driver needed
+# ---------------------------------------------------------------------------
+
+
+def supabase_configured() -> bool:
+    return bool(SUPABASE_URL and SUPABASE_SERVICE_KEY)
+
+
+def _require_supabase():
+    if not supabase_configured():
+        raise ApiError(501, "accounts are not configured on this server (missing SUPABASE_URL / SUPABASE_SERVICE_KEY)")
+
+
+def sb_request(method: str, table: str, params: dict = None, body=None, extra_headers: dict = None, timeout=10.0):
+    _require_supabase()
+    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    if params:
+        url += "?" + urllib.parse.urlencode(params)
+    data = json.dumps(body).encode("utf-8") if body is not None else None
+    headers = {
+        "apikey": SUPABASE_SERVICE_KEY,
+        "Authorization": f"Bearer {SUPABASE_SERVICE_KEY}",
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+    }
+    if extra_headers:
+        headers.update(extra_headers)
+    req = urllib.request.Request(url, data=data, method=method, headers=headers)
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            raw = resp.read()
+            parsed = json.loads(raw) if raw else None
+            return parsed, resp.headers
+    except urllib.error.HTTPError as e:
+        err_body = e.read().decode("utf-8", "replace")
+        raise ApiError(502, f"database error ({e.code}): {err_body[:300]}") from e
+    except urllib.error.URLError as e:
+        raise ApiError(502, f"database unreachable: {e.reason}") from e
+
+
+def sb_select(table: str, select: str = "*", limit: int = None, order: str = None, **filters):
+    params = dict(filters)
+    params["select"] = select
+    if limit is not None:
+        params["limit"] = str(limit)
+    if order:
+        params["order"] = order
+    rows, _ = sb_request("GET", table, params=params)
+    return rows or []
+
+
+def sb_insert(table: str, row: dict):
+    rows, _ = sb_request("POST", table, body=row, extra_headers={"Prefer": "return=representation"})
+    return rows[0] if rows else None
+
+
+def sb_update(table: str, filters: dict, patch: dict):
+    rows, _ = sb_request("PATCH", table, params=filters, body=patch, extra_headers={"Prefer": "return=representation"})
+    return rows
+
+
+def sb_delete(table: str, filters: dict):
+    rows, _ = sb_request("DELETE", table, params=filters, extra_headers={"Prefer": "return=representation"})
+    return rows
+
+
+def sb_count(table: str, **filters) -> int:
+    params = dict(filters)
+    params["select"] = "id"
+    _, headers = sb_request(
+        "GET", table, params=params,
+        extra_headers={"Prefer": "count=exact", "Range-Unit": "items", "Range": "0-0"},
+    )
+    content_range = headers.get("Content-Range", "*/0")
+    total = content_range.split("/")[-1]
+    return int(total) if total.isdigit() else 0
+
+
+# ---------------------------------------------------------------------------
+# passwords + sessions
+# ---------------------------------------------------------------------------
+
+
+def hash_password(password: str, salt: bytes = None):
+    if salt is None:
+        salt = secrets.token_bytes(16)
+    dk = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), salt, PBKDF2_ITERATIONS)
+    return salt.hex(), dk.hex()
+
+
+def verify_password(password: str, salt_hex: str, hash_hex: str) -> bool:
+    try:
+        salt = bytes.fromhex(salt_hex)
+    except ValueError:
+        return False
+    _, dk_hex = hash_password(password, salt)
+    return hmac.compare_digest(dk_hex, hash_hex)
+
+
+USERNAME_RE_ALLOWED = "abcdefghijklmnopqrstuvwxyz0123456789_"
+
+
+def validate_username(username: str) -> str:
+    u = (username or "").strip().lower()
+    if not (3 <= len(u) <= 24):
+        raise ApiError(400, "username must be 3-24 characters")
+    if any(c not in USERNAME_RE_ALLOWED for c in u):
+        raise ApiError(400, "username may only contain lowercase letters, numbers, and underscores")
+    return u
+
+
+def validate_password(password: str) -> str:
+    if not password or len(password) < 8:
+        raise ApiError(400, "password must be at least 8 characters")
+    if len(password) > 200:
+        raise ApiError(400, "password too long")
+    return password
+
+
+def create_session(user_id) -> str:
+    token = secrets.token_urlsafe(32)
+    expires = (datetime.now(timezone.utc) + timedelta(days=SESSION_TTL_DAYS)).isoformat()
+    sb_insert("sessions", {"token": token, "user_id": user_id, "expires_at": expires})
+    return token
+
+
+def get_user_by_session(token: str):
+    if not token:
+        return None
+    rows = sb_select("sessions", token=f"eq.{token}", limit=1)
+    if not rows:
+        return None
+    session = rows[0]
+    if session["expires_at"] <= now_iso():
+        return None
+    users = sb_select("users", id=f"eq.{session['user_id']}", limit=1)
+    return users[0] if users else None
+
+
+# stateless admin sessions (HMAC-signed cookie, no DB row needed)
+
+
+def make_admin_cookie_value() -> str:
+    expires = int(time.time()) + ADMIN_SESSION_TTL_SECONDS
+    sig = hmac.new(ADMIN_PASSWORD.encode("utf-8"), str(expires).encode("utf-8"), hashlib.sha256).hexdigest()
+    return f"{expires}.{sig}"
+
+
+def verify_admin_cookie(value: str) -> bool:
+    if not value or not ADMIN_PASSWORD:
+        return False
+    try:
+        expires_str, sig = value.split(".", 1)
+    except ValueError:
+        return False
+    expected = hmac.new(ADMIN_PASSWORD.encode("utf-8"), expires_str.encode("utf-8"), hashlib.sha256).hexdigest()
+    if not hmac.compare_digest(sig, expected):
+        return False
+    try:
+        return int(expires_str) > time.time()
+    except ValueError:
+        return False
+
+
+# ---------------------------------------------------------------------------
+# HTTP handler
+# ---------------------------------------------------------------------------
+
+
 class Handler(BaseHTTPRequestHandler):
     server_version = "PolymarketLookup/1.0"
 
     def log_message(self, fmt, *args):
         sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
 
-    def _send_json(self, obj, status=200):
+    # ---- low-level send helpers ----
+
+    def _send_json(self, obj, status=200, cookies=None):
         body = json.dumps(obj).encode("utf-8")
         self.send_response(status)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(body)))
+        for c in (cookies or []):
+            self.send_header("Set-Cookie", c)
         self.end_headers()
         self.wfile.write(body)
 
     def _send_error_json(self, status, message):
         self._send_json({"error": message}, status=status)
 
+    def _is_https(self) -> bool:
+        return self.headers.get("X-Forwarded-Proto", "") == "https"
+
+    def _cookie_str(self, name, value, max_age=None) -> str:
+        parts = [f"{name}={value}", "Path=/", "HttpOnly", "SameSite=Lax"]
+        if max_age is not None:
+            parts.append(f"Max-Age={max_age}")
+        if self._is_https():
+            parts.append("Secure")
+        return "; ".join(parts)
+
+    def _get_cookie(self, name):
+        header = self.headers.get("Cookie")
+        if not header:
+            return None
+        jar = http.cookies.SimpleCookie()
+        try:
+            jar.load(header)
+        except Exception:
+            return None
+        return jar[name].value if name in jar else None
+
+    def _read_json_body(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        if length <= 0:
+            return {}
+        if length > 1_000_000:
+            raise ApiError(413, "request body too large")
+        raw = self.rfile.read(length)
+        try:
+            return json.loads(raw) if raw else {}
+        except json.JSONDecodeError:
+            raise ApiError(400, "invalid JSON body")
+
+    def _current_user(self):
+        token = self._get_cookie("session")
+        return get_user_by_session(token)
+
+    def _require_user(self):
+        user = self._current_user()
+        if not user:
+            raise ApiError(401, "not signed in")
+        return user
+
+    def _require_admin(self):
+        cookie = self._get_cookie("admin_session")
+        if not verify_admin_cookie(cookie):
+            raise ApiError(401, "admin auth required")
+
+    # ---- static files ----
+
     def _serve_static(self, path: str):
-        if path == "/":
+        if path == "/" or path == "/index.html":
             path = "/index.html"
-        # prevent path traversal
         rel = path.lstrip("/")
         file_path = (PUBLIC_DIR / rel).resolve()
         if PUBLIC_DIR.resolve() not in file_path.parents and file_path != PUBLIC_DIR.resolve():
@@ -200,6 +471,8 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    # ---- route tables ----
+
     def do_GET(self):
         parsed = urllib.parse.urlparse(self.path)
         qs = urllib.parse.parse_qs(parsed.query)
@@ -211,8 +484,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not query:
                     self._send_json({"results": []})
                     return
-                results = do_search(query, limit)
-                self._send_json({"results": results})
+                self._send_json({"results": do_search(query, limit)})
                 return
 
             if parsed.path == "/api/market":
@@ -235,18 +507,195 @@ class Handler(BaseHTTPRequestHandler):
                 self._send_json(do_orderbook(token_id))
                 return
 
+            if parsed.path == "/api/auth/me":
+                user = self._current_user()
+                self._send_json({"user": {"username": user["username"]} if user else None})
+                return
+
+            if parsed.path == "/api/queries":
+                user = self._require_user()
+                rows = sb_select("queries", user_id=f"eq.{user['id']}", order="updated_at.desc", limit=30)
+                self._send_json({"queries": rows})
+                return
+
+            if parsed.path == "/api/admin/stats":
+                self._require_admin()
+                self._send_json(compute_admin_stats())
+                return
+
             if parsed.path.startswith("/api/"):
                 self._send_error_json(404, "unknown endpoint")
                 return
 
             self._serve_static(parsed.path)
 
+        except ApiError as e:
+            self._send_error_json(e.status, e.message)
         except urllib.error.HTTPError as e:
             self._send_error_json(e.code, f"upstream error: {e.reason}")
         except urllib.error.URLError as e:
             self._send_error_json(502, f"upstream unreachable: {e.reason}")
         except Exception as e:  # noqa: BLE001
             self._send_error_json(500, f"server error: {e}")
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+
+        try:
+            if parsed.path == "/api/auth/signup":
+                body = self._read_json_body()
+                username = validate_username(body.get("username", ""))
+                password = validate_password(body.get("password", ""))
+                if sb_select("users", username=f"eq.{username}", limit=1):
+                    raise ApiError(409, "that username is taken")
+                salt_hex, hash_hex = hash_password(password)
+                user = sb_insert("users", {
+                    "username": username,
+                    "password_hash": hash_hex,
+                    "password_salt": salt_hex,
+                })
+                token = create_session(user["id"])
+                cookie = self._cookie_str("session", token, max_age=SESSION_TTL_DAYS * 86400)
+                self._send_json({"user": {"username": username}}, cookies=[cookie])
+                return
+
+            if parsed.path == "/api/auth/login":
+                body = self._read_json_body()
+                username = (body.get("username") or "").strip().lower()
+                password = body.get("password") or ""
+                rows = sb_select("users", username=f"eq.{username}", limit=1)
+                if not rows or not verify_password(password, rows[0]["password_salt"], rows[0]["password_hash"]):
+                    raise ApiError(401, "wrong username or password")
+                user = rows[0]
+                token = create_session(user["id"])
+                cookie = self._cookie_str("session", token, max_age=SESSION_TTL_DAYS * 86400)
+                self._send_json({"user": {"username": user["username"]}}, cookies=[cookie])
+                return
+
+            if parsed.path == "/api/auth/logout":
+                token = self._get_cookie("session")
+                if token and supabase_configured():
+                    try:
+                        sb_delete("sessions", {"token": f"eq.{token}"})
+                    except ApiError:
+                        pass
+                cookie = self._cookie_str("session", "", max_age=0)
+                self._send_json({"ok": True}, cookies=[cookie])
+                return
+
+            if parsed.path == "/api/queries":
+                user = self._require_user()
+                body = self._read_json_body()
+                kind = body.get("kind")
+                query_text = (body.get("query_text") or "").strip()
+                market_id = body.get("market_id")
+                market_question = body.get("market_question")
+                if kind not in ("search", "market") or not query_text:
+                    raise ApiError(400, "kind must be 'search' or 'market', query_text required")
+
+                recent = sb_select("queries", user_id=f"eq.{user['id']}", order="updated_at.desc", limit=1)
+                if (
+                    recent
+                    and recent[0]["kind"] == kind
+                    and recent[0]["query_text"] == query_text
+                    and recent[0].get("market_id") == market_id
+                ):
+                    updated = sb_update("queries", {"id": f"eq.{recent[0]['id']}"}, {"updated_at": now_iso()})
+                    self._send_json({"query": updated[0] if updated else recent[0]})
+                    return
+
+                row = sb_insert("queries", {
+                    "user_id": user["id"],
+                    "kind": kind,
+                    "query_text": query_text,
+                    "market_id": market_id,
+                    "market_question": market_question,
+                    "updated_at": now_iso(),
+                })
+                self._send_json({"query": row})
+                return
+
+            if parsed.path == "/api/admin/login":
+                if not ADMIN_PASSWORD:
+                    raise ApiError(501, "admin panel not configured (missing ADMIN_PASSWORD)")
+                body = self._read_json_body()
+                if not hmac.compare_digest(body.get("password") or "", ADMIN_PASSWORD):
+                    raise ApiError(401, "wrong password")
+                cookie = self._cookie_str("admin_session", make_admin_cookie_value(), max_age=ADMIN_SESSION_TTL_SECONDS)
+                self._send_json({"ok": True}, cookies=[cookie])
+                return
+
+            if parsed.path == "/api/admin/logout":
+                cookie = self._cookie_str("admin_session", "", max_age=0)
+                self._send_json({"ok": True}, cookies=[cookie])
+                return
+
+            self._send_error_json(404, "unknown endpoint")
+
+        except ApiError as e:
+            self._send_error_json(e.status, e.message)
+        except Exception as e:  # noqa: BLE001
+            self._send_error_json(500, f"server error: {e}")
+
+    def do_DELETE(self):
+        parsed = urllib.parse.urlparse(self.path)
+        qs = urllib.parse.parse_qs(parsed.query)
+
+        try:
+            if parsed.path == "/api/queries":
+                user = self._require_user()
+                query_id = (qs.get("id") or [""])[0].strip()
+                if not query_id:
+                    raise ApiError(400, "missing id")
+                sb_delete("queries", {"id": f"eq.{query_id}", "user_id": f"eq.{user['id']}"})
+                self._send_json({"ok": True})
+                return
+
+            self._send_error_json(404, "unknown endpoint")
+
+        except ApiError as e:
+            self._send_error_json(e.status, e.message)
+        except Exception as e:  # noqa: BLE001
+            self._send_error_json(500, f"server error: {e}")
+
+
+def compute_admin_stats() -> dict:
+    total_users = sb_count("users")
+    total_queries = sb_count("queries")
+    today_start = iso_today_start()
+    signups_today = sb_count("users", created_at=f"gte.{today_start}")
+    queries_today = sb_count("queries", created_at=f"gte.{today_start}")
+
+    seven_days_ago = iso_days_ago(6)  # today + 6 previous days = 7 buckets
+    recent_users = sb_select("users", select="created_at", created_at=f"gte.{seven_days_ago}")
+    recent_queries = sb_select("queries", select="created_at", created_at=f"gte.{seven_days_ago}")
+
+    def bucket_by_day(rows):
+        counts = {}
+        for r in rows:
+            day = (r.get("created_at") or "")[:10]
+            if day:
+                counts[day] = counts.get(day, 0) + 1
+        return counts
+
+    signup_counts = bucket_by_day(recent_users)
+    query_counts = bucket_by_day(recent_queries)
+
+    days = []
+    for i in range(6, -1, -1):
+        d = (datetime.now(timezone.utc) - timedelta(days=i)).strftime("%Y-%m-%d")
+        days.append({"date": d, "signups": signup_counts.get(d, 0), "queries": query_counts.get(d, 0)})
+
+    recent_signups = sb_select("users", select="username,created_at", order="created_at.desc", limit=10)
+
+    return {
+        "total_users": total_users,
+        "total_queries": total_queries,
+        "signups_today": signups_today,
+        "queries_today": queries_today,
+        "last_7_days": days,
+        "recent_signups": recent_signups,
+    }
 
 
 def main():
@@ -256,6 +705,8 @@ def main():
     host = os.environ.get("HOST", "0.0.0.0")
     server = ThreadingHTTPServer((host, port), Handler)
     print(f"Polymarket Contract Lookup running on {host}:{port}")
+    print(f"Accounts (Supabase): {'configured' if supabase_configured() else 'NOT configured — auth endpoints disabled'}")
+    print(f"Admin panel: {'configured' if ADMIN_PASSWORD else 'NOT configured — set ADMIN_PASSWORD to enable /admin.html'}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

@@ -7,7 +7,24 @@
   const homeBtn = document.getElementById("home-btn");
   const brandHome = document.getElementById("brand-home");
 
+  const authArea = document.getElementById("auth-area");
+  const authModal = document.getElementById("auth-modal");
+  const authModalClose = document.getElementById("auth-modal-close");
+  const tabLogin = document.getElementById("tab-login");
+  const tabSignup = document.getElementById("tab-signup");
+  const authForm = document.getElementById("auth-form");
+  const authUsername = document.getElementById("auth-username");
+  const authPassword = document.getElementById("auth-password");
+  const authError = document.getElementById("auth-error");
+  const authSubmit = document.getElementById("auth-submit");
+
+  const recentsPanel = document.getElementById("recents-panel");
+  const recentsList = document.getElementById("recents-list");
+  const recentsClose = document.getElementById("recents-close");
+
   let currentRequestId = 0;
+  let currentUser = null;
+  let authMode = "login";
 
   form.addEventListener("submit", (e) => {
     e.preventDefault();
@@ -16,6 +33,216 @@
 
   homeBtn.addEventListener("click", goHome);
   brandHome.addEventListener("click", goHome);
+
+  // ---------------- auth ----------------
+
+  init();
+
+  async function init() {
+    try {
+      const res = await fetch("/api/auth/me");
+      const data = await res.json();
+      currentUser = (res.ok && data.user) || null;
+    } catch (_) {
+      currentUser = null;
+    }
+    renderAuthArea();
+  }
+
+  function renderAuthArea() {
+    if (currentUser) {
+      authArea.innerHTML = `
+        <button type="button" id="recents-toggle" class="auth-link">[ recents ]</button>
+        <span class="auth-user">hi <strong>${escapeHtml(currentUser.username)}</strong></span>
+        <button type="button" id="logout-btn" class="auth-link">[ logout ]</button>
+      `;
+      document.getElementById("recents-toggle").addEventListener("click", toggleRecents);
+      document.getElementById("logout-btn").addEventListener("click", doLogout);
+    } else {
+      authArea.innerHTML = `
+        <button type="button" id="login-btn" class="auth-link">[ login ]</button>
+        <button type="button" id="signup-btn" class="auth-link">[ sign up ]</button>
+      `;
+      document.getElementById("login-btn").addEventListener("click", () => openAuthModal("login"));
+      document.getElementById("signup-btn").addEventListener("click", () => openAuthModal("signup"));
+      closeRecents();
+    }
+  }
+
+  function openAuthModal(mode) {
+    setAuthMode(mode);
+    authForm.reset();
+    authError.textContent = "";
+    authModal.classList.remove("hidden");
+    authUsername.focus();
+  }
+
+  function closeAuthModal() {
+    authModal.classList.add("hidden");
+  }
+
+  function setAuthMode(mode) {
+    authMode = mode;
+    tabLogin.classList.toggle("active", mode === "login");
+    tabSignup.classList.toggle("active", mode === "signup");
+    authPassword.autocomplete = mode === "login" ? "current-password" : "new-password";
+    authSubmit.textContent = mode === "login" ? "log in" : "create account";
+    authError.textContent = "";
+  }
+
+  tabLogin.addEventListener("click", () => setAuthMode("login"));
+  tabSignup.addEventListener("click", () => setAuthMode("signup"));
+  authModalClose.addEventListener("click", closeAuthModal);
+  authModal.addEventListener("click", (e) => {
+    if (e.target === authModal) closeAuthModal();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!authModal.classList.contains("hidden")) closeAuthModal();
+    else if (!recentsPanel.classList.contains("hidden")) closeRecents();
+  });
+
+  authForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const username = authUsername.value.trim();
+    const password = authPassword.value;
+    authError.textContent = "";
+    authSubmit.disabled = true;
+    const busyLabel = authMode === "login" ? "logging in…" : "creating…";
+    const idleLabel = authMode === "login" ? "log in" : "create account";
+    authSubmit.textContent = busyLabel;
+
+    try {
+      const res = await fetch(`/api/auth/${authMode === "login" ? "login" : "signup"}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "something went wrong");
+      currentUser = data.user;
+      closeAuthModal();
+      renderAuthArea();
+    } catch (err) {
+      authError.textContent = err.message;
+    } finally {
+      authSubmit.disabled = false;
+      authSubmit.textContent = idleLabel;
+    }
+  });
+
+  async function doLogout() {
+    try {
+      await fetch("/api/auth/logout", { method: "POST" });
+    } catch (_) {
+      // ignore — clear client state regardless
+    }
+    currentUser = null;
+    renderAuthArea();
+  }
+
+  // ---------------- recents ----------------
+
+  recentsClose.addEventListener("click", closeRecents);
+
+  function toggleRecents() {
+    if (recentsPanel.classList.contains("hidden")) openRecents();
+    else closeRecents();
+  }
+
+  async function openRecents() {
+    recentsPanel.classList.remove("hidden");
+    recentsList.innerHTML = `<div class="recents-empty"><span class="spinner"></span>loading…</div>`;
+    await loadRecents();
+  }
+
+  function closeRecents() {
+    recentsPanel.classList.add("hidden");
+  }
+
+  async function loadRecents() {
+    try {
+      const res = await fetch("/api/queries");
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "failed to load recents");
+      renderRecentsList(data.queries || []);
+    } catch (err) {
+      recentsList.innerHTML = `<div class="recents-empty">couldn't load recents: ${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function renderRecentsList(items) {
+    if (items.length === 0) {
+      recentsList.innerHTML = `<div class="recents-empty">no recent queries yet — searches and contracts you open will show up here.</div>`;
+      return;
+    }
+    recentsList.innerHTML = "";
+    for (const item of items) {
+      const row = document.createElement("div");
+      row.className = "recents-item";
+      const kindLabel = item.kind === "market" ? "market" : "search";
+      row.innerHTML = `
+        <span class="recents-kind">[${kindLabel}]</span>
+        <span class="recents-text">${escapeHtml(item.query_text)}</span>
+        <span class="recents-time">${relativeTime(item.updated_at || item.created_at)}</span>
+        <button type="button" class="recents-remove" title="Remove">&times;</button>
+      `;
+      row.addEventListener("click", (e) => {
+        if (e.target.closest(".recents-remove")) return;
+        reopenRecent(item);
+      });
+      row.querySelector(".recents-remove").addEventListener("click", async (e) => {
+        e.stopPropagation();
+        try {
+          await fetch(`/api/queries?id=${encodeURIComponent(item.id)}`, { method: "DELETE" });
+        } catch (_) {
+          // ignore
+        }
+        row.remove();
+        if (!recentsList.children.length) {
+          recentsList.innerHTML = `<div class="recents-empty">no recent queries yet — searches and contracts you open will show up here.</div>`;
+        }
+      });
+      recentsList.appendChild(row);
+    }
+  }
+
+  function reopenRecent(item) {
+    closeRecents();
+    if (item.kind === "market" && item.market_id) {
+      showDetail({ id: item.market_id, question: item.market_question || item.query_text });
+    } else {
+      input.value = item.query_text;
+      runSearch(item.query_text);
+    }
+  }
+
+  function logQuery(payload) {
+    if (!currentUser) return;
+    fetch("/api/queries", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    })
+      .then(() => {
+        if (!recentsPanel.classList.contains("hidden")) loadRecents();
+      })
+      .catch(() => {});
+  }
+
+  function relativeTime(iso) {
+    if (!iso) return "";
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return "";
+    const mins = Math.floor((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return "now";
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    const days = Math.floor(hrs / 24);
+    if (days < 7) return `${days}d`;
+    return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  }
 
   function goHome() {
     currentRequestId++; // invalidate any in-flight search so it can't repopulate the page
@@ -58,6 +285,7 @@
 
       statusEl.textContent = `${results.length} contract${results.length === 1 ? "" : "s"} found`;
       renderResults(results);
+      logQuery({ kind: "search", query_text: query });
     } catch (err) {
       if (requestId !== currentRequestId) return;
       statusEl.textContent = `Couldn't load results: ${err.message}`;
@@ -147,7 +375,15 @@
     try {
       const res = await fetch(`/api/market?id=${encodeURIComponent(market.id)}`);
       const data = await res.json();
-      if (res.ok && data.market) full = data.market;
+      if (res.ok && data.market) {
+        full = data.market;
+        logQuery({
+          kind: "market",
+          query_text: full.question || String(full.id),
+          market_id: String(full.id),
+          market_question: full.question || null,
+        });
+      }
     } catch (_) {
       // fall back to the summary we already have
     }
